@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -84,13 +83,13 @@ func ExecuteRequest(credentials Credentials, endpoint, path, action string, para
 	if err != nil {
 		return nil, err
 	}
-	log.Println("url: ", url)
+	//log.Println("url: ", url)
 
 	values, err := createRequestValues(credentials, action, parameters)
 	if err != nil {
 		return nil, err
 	}
-	log.Println("values: ", values)
+	//log.Println("values: ", values)
 
 	req, err := http.NewRequest("POST", url, bytes.NewBufferString(values.Encode()))
 	if err != nil {
@@ -102,7 +101,7 @@ func ExecuteRequest(credentials Credentials, endpoint, path, action string, para
 	if err != nil {
 		return nil, err
 	}
-	log.Println("headers: ", headers)
+	//log.Println("headers: ", headers)
 	for key, value := range headers {
 		req.Header.Set(key, value)
 	}
@@ -117,6 +116,8 @@ func ExecuteRequest(credentials Credentials, endpoint, path, action string, para
 	if err != nil {
 		return nil, err
 	}
+
+	//log.Println(string(body))
 
 	return body, nil
 }
