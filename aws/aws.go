@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -78,7 +77,7 @@ func createRequestValues(credentials Credentials, action string, parameters Para
 	return values, nil
 }
 
-func ExecuteRequest(credentials Credentials, endpoint, path, action string, parameters Parameters) ([]byte, error) {
+func ExecuteRequest(credentials Credentials, endpoint, path, action string, parameters Parameters) (*http.Response, error) {
 	url, err := createRequestUrl(endpoint, path)
 	if err != nil {
 		return nil, err
@@ -112,12 +111,5 @@ func ExecuteRequest(credentials Credentials, endpoint, path, action string, para
 		return nil, err
 	}
 
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	//log.Println(string(body))
-
-	return body, nil
+	return res, err
 }

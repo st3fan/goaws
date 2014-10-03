@@ -5,7 +5,9 @@ import (
 	"encoding/xml"
 	"fmt"
 	"github.com/st3fan/goaws/aws"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"strings"
 )
 
@@ -136,6 +138,18 @@ type ErrorResponse struct {
 	RequestId string
 }
 
+func (er *ErrorResponse) Valid() bool {
+	return er.RequestId != ""
+}
+
+type ServiceError struct {
+	ErrorResponse ErrorResponse
+}
+
+func (se *ServiceError) Error() string {
+	return fmt.Sprintf("%s/%s: %s", se.ErrorResponse.Error.Type, se.ErrorResponse.Error.Code, se.ErrorResponse.Error.Message)
+}
+
 func parseErrorResponse(data []byte) (ErrorResponse, error) {
 	response := ErrorResponse{}
 	if err := xml.Unmarshal(data, &response); err != nil {
@@ -181,7 +195,7 @@ func parseVerifyEmailIdentityResponse(data []byte) (VerifyEmailIdentityResponse,
 
 func (ses *SimpleEmailService) VerifyEmailIdentity(emailAddress string) (VerifyEmailIdentityResponse, error) {
 	parameters := aws.Parameters{"EmailAddress": emailAddress}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "VerifyEmailIdentity", parameters)
+	data, err := ses.executeRequest("VerifyEmailIdentity", parameters)
 	if err != nil {
 		return VerifyEmailIdentityResponse{}, err
 	}
@@ -207,7 +221,7 @@ func (ses *SimpleEmailService) ListIdentities(identityType IdentityType, maxItem
 	if nextToken != "" {
 		parameters["NextToken"] = nextToken
 	}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "ListIdentities", parameters)
+	data, err := ses.executeRequest("ListIdentities", parameters)
 	if err != nil {
 		return ListIdentitiesResponse{}, err
 	}
@@ -224,7 +238,7 @@ func parseDeleteIdentityResponse(data []byte) (DeleteIdentityResponse, error) {
 
 func (ses *SimpleEmailService) DeleteIdentity(identity string) (DeleteIdentityResponse, error) {
 	parameters := aws.Parameters{"Identity": identity}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "DeleteIdentity", parameters)
+	data, err := ses.executeRequest("DeleteIdentity", parameters)
 	if err != nil {
 		return DeleteIdentityResponse{}, err
 	}
@@ -251,7 +265,7 @@ func parseGetIdentityVerificationAttributesResponse(data []byte) (GetIdentityVer
 
 func (ses *SimpleEmailService) GetIdentityVerificationAttributes(identities []string) (GetIdentityVerificationAttributesResponse, error) {
 	parameters := aws.Parameters{"Identities.member": identities}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "GetIdentityVerificationAttributes", parameters)
+	data, err := ses.executeRequest("GetIdentityVerificationAttributes", parameters)
 	if err != nil {
 		return GetIdentityVerificationAttributesResponse{}, err
 	}
@@ -306,7 +320,7 @@ func (ses *SimpleEmailService) SendEmail(destination Destination, message Messag
 	if source != "" {
 		parameters["Source"] = source
 	}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "SendEmail", parameters)
+	data, err := ses.executeRequest("SendEmail", parameters)
 	if err != nil {
 		return SendEmailResponse{}, err
 	}
@@ -330,9 +344,30 @@ func (ses *SimpleEmailService) SendRawEmail(destinations []string, rawMessage Ra
 	if source != "" {
 		parameters["Source"] = source
 	}
-	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "SendRawEmail", parameters)
+	data, err := ses.executeRequest("SendRawEmail", parameters)
 	if err != nil {
 		return SendRawEmailResponse{}, err
 	}
 	return parseSendRawEmailResponse(data)
+}
+
+func (ses *SimpleEmailService) executeRequest(action string, parameters aws.Parameters) ([]byte, error) {
+	res, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", action, parameters)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode != http.StatusOK {
+		errorResponse, _ := parseErrorResponse(body)
+		if errorResponse.Valid() {
+			return nil, &ServiceError{ErrorResponse: errorResponse}
+		}
+	}
+
+	return body, err
 }
