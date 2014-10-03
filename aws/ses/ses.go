@@ -3,7 +3,7 @@ package ses
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/st3fan/mailer/aws"
+	"github.com/st3fan/goaws/aws"
 	"log"
 )
 
