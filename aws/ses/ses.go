@@ -1,6 +1,7 @@
 package ses
 
 import (
+	"encoding/base64"
 	"encoding/xml"
 	"fmt"
 	"github.com/st3fan/goaws/aws"
@@ -64,6 +65,14 @@ func NewTextMessage(subject, body string) Message {
 	}
 }
 
+type RawMessage struct {
+	Data string
+}
+
+func NewRawMessage(data string) RawMessage {
+	return RawMessage{Data: data}
+}
+
 type VerifyEmailIdentityResponse struct {
 	ResponseMetadata aws.ResponseMetadata
 }
@@ -105,6 +114,13 @@ type GetIdentityVerificationAttributesResponse struct {
 
 type SendEmailResponse struct {
 	SendEmailResult struct {
+		MessageId string
+	}
+	ResponseMetadata aws.ResponseMetadata
+}
+
+type SendRawEmailResponse struct {
+	SendRawEmailResult struct {
 		MessageId string
 	}
 	ResponseMetadata aws.ResponseMetadata
@@ -270,4 +286,28 @@ func (ses *SimpleEmailService) SendEmail(destination Destination, message Messag
 		return SendEmailResponse{}, err
 	}
 	return parseSendEmailResponse(data)
+}
+
+func parseSendRawEmailResponse(data []byte) (SendRawEmailResponse, error) {
+	response := SendRawEmailResponse{}
+	if err := xml.Unmarshal(data, &response); err != nil {
+		return SendRawEmailResponse{}, err
+	}
+	return response, nil
+}
+
+func (ses *SimpleEmailService) SendRawEmail(destinations []string, rawMessage RawMessage, source string) (SendRawEmailResponse, error) {
+	parameters := aws.Parameters{}
+	for idx, value := range destinations {
+		parameters[fmt.Sprintf("Destinations.member.%d", idx+1)] = value
+	}
+	parameters["RawMessage.Data"] = base64.StdEncoding.EncodeToString([]byte(rawMessage.Data))
+	if source != "" {
+		parameters["Source"] = source
+	}
+	data, err := aws.ExecuteRequest(ses.credentials, ses.endpoint, "/", "SendRawEmail", parameters)
+	if err != nil {
+		return SendRawEmailResponse{}, err
+	}
+	return parseSendRawEmailResponse(data)
 }
