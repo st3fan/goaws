@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/st3fan/goaws/aws"
 	"log"
+	"strings"
 )
 
 // This should all move to an aws/ses package
@@ -124,6 +125,30 @@ type SendRawEmailResponse struct {
 		MessageId string
 	}
 	ResponseMetadata aws.ResponseMetadata
+}
+
+type ErrorResponse struct {
+	Error struct {
+		Type    string
+		Code    string
+		Message string
+	}
+	RequestId string
+}
+
+func parseErrorResponse(data []byte) (ErrorResponse, error) {
+	response := ErrorResponse{}
+	if err := xml.Unmarshal(data, &response); err != nil {
+		return ErrorResponse{}, err
+	}
+
+	// Usually AWS APIs are pretty consistent. This one is not.
+	response.Error.Type = strings.TrimSpace(response.Error.Type)
+	response.Error.Code = strings.TrimSpace(response.Error.Code)
+	response.Error.Message = strings.TrimSpace(response.Error.Message)
+	response.RequestId = strings.TrimSpace(response.RequestId)
+
+	return response, nil
 }
 
 func endpointForRegion(region aws.Region) (string, error) {
