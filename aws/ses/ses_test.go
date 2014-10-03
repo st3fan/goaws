@@ -1,9 +1,6 @@
 package ses
 
-import (
-	"log"
-	"testing"
-)
+import "testing"
 
 func Test_parseListIdentitiesResponse(t *testing.T) {
 	xml := `<ListIdentitiesResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
@@ -61,9 +58,19 @@ func Test_parseErrorResponse(t *testing.T) {
 		t.Error("parseErrorResponse failed", err)
 	}
 
-	log.Printf("%+v\n", response)
-
 	if response.RequestId != "42d59b56-7407-4c4a-be0f-4c88daeea257" {
 		t.Error("response.RequestId failed to parse")
+	}
+
+	if response.Error.Type != "Sender" {
+		t.Error("response.Error.Type failed to parse")
+	}
+
+	if response.Error.Code != "ValidationError" {
+		t.Error("response.Error.Code failed to parse")
+	}
+
+	if response.Error.Message != "Value null at 'message.subject' failed to satisfy constraint: Member must not be null" {
+		t.Error("response.Error.Message failed to parse")
 	}
 }
