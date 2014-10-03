@@ -28,6 +28,12 @@ type Destination struct {
 	ToAddresses  []string
 }
 
+func NewSingleDestination(to string) Destination {
+	return Destination{
+		ToAddresses: []string{to},
+	}
+}
+
 type Content struct {
 	Charset string
 	Data    string
@@ -41,6 +47,21 @@ type Body struct {
 type Message struct {
 	Body    Body
 	Subject Content
+}
+
+func NewTextMessage(subject, body string) Message {
+	return Message{
+		Body: Body{
+			Text: Content{
+				Charset: "UTF-8",
+				Data:    body,
+			},
+		},
+		Subject: Content{
+			Charset: "UTF-8",
+			Data:    subject,
+		},
+	}
 }
 
 type VerifyEmailIdentityResponse struct {
